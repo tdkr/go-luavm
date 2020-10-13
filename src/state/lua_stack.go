@@ -28,7 +28,7 @@ func (self *luaStack) push(val luaValue) {
 }
 
 func (self *luaStack) pop() luaValue {
-	if self.top == 0 {
+	if self.top < 1 {
 		panic("lua stack underflow")
 	}
 	self.top--
@@ -49,20 +49,20 @@ func (self *luaStack) isValid(idx int) bool {
 }
 
 func (self *luaStack) get(idx int) luaValue {
-	idx = self.absIndex(idx)
-	if self.isValid(idx) {
-		return self.slots[idx-1]
+	absIdx := self.absIndex(idx)
+	if absIdx > 0 && absIdx <= self.top {
+		return self.slots[absIdx-1]
 	}
 	return nil
 }
 
 func (self *luaStack) set(idx int, val luaValue) {
-	idx = self.absIndex(idx)
-	if self.isValid(idx) {
-		self.slots[idx] = val
-	} else {
-		panic("invalid idx")
+	absIdx := self.absIndex(idx)
+	if absIdx > 0 && absIdx <= self.top {
+		self.slots[absIdx-1] = val
+		return
 	}
+	panic("invalid index!")
 }
 
 func (self *luaStack) reverse(from, to int) {

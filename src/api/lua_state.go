@@ -1,7 +1,7 @@
 package api
 
 type LuaType int
-type ArightOp int
+type ArithOp int
 type CompareOp int
 
 type LuaState interface {
@@ -44,7 +44,7 @@ type LuaState interface {
 	PushString(s string)
 
 	/* operate functions */
-	Arith(op ArightOp)
+	Arith(op ArithOp)
 	Compare(idx1, idx2 int, op CompareOp) bool
 	Len(idx int)
 	Concat(n int)

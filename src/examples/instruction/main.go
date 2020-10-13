@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/tdkr/go-luavm/src/api"
 	"github.com/tdkr/go-luavm/src/binchunk"
+	"github.com/tdkr/go-luavm/src/state"
 	. "github.com/tdkr/go-luavm/src/vm"
 	"io/ioutil"
 	"os"
@@ -20,7 +22,27 @@ func main() {
 	}
 
 	proto := binchunk.Undump(data)
+	fmt.Println("********* list proto **********")
 	list(proto)
+	fmt.Println("********* exec proto **********")
+	luaMain(proto)
+}
+
+func luaMain(proto *binchunk.Prototype) {
+	nRegs := int(proto.MaxStackSize)
+	lState := state.New(nRegs+8, proto)
+	lState.SetTop(nRegs)
+	for {
+		pc := lState.PC()
+		inst := Instruction(lState.Fetch())
+		if inst.Opcode() != OP_RETURN {
+			inst.Execute(lState)
+			fmt.Printf("[%02d] %s ", pc+1, inst.OpName())
+			printStack(lState)
+		} else {
+			break
+		}
+	}
 }
 
 func list(f *binchunk.Prototype) {
@@ -146,4 +168,22 @@ func upvalName(f *binchunk.Prototype, idx int) string {
 		return f.UpvalueNames[idx]
 	}
 	return "-"
+}
+
+func printStack(ls api.LuaState) {
+	top := ls.GetTop()
+	for i := 1; i <= top; i++ {
+		t := ls.Type(i)
+		switch t {
+		case api.LUA_TBOOLEAN:
+			fmt.Printf("[%t]", ls.ToBoolean(i))
+		case api.LUA_TNUMBER:
+			fmt.Printf("[%g]", ls.ToNumber(i))
+		case api.LUA_TSTRING:
+			fmt.Printf("[%q]", ls.ToString(i))
+		default: // other values
+			fmt.Printf("[%s]", ls.TypeName(t))
+		}
+	}
+	fmt.Println()
 }

@@ -14,10 +14,16 @@ func FFloorDiv(a, b float64) float64 {
 }
 
 func IMod(a, b int64) int64 {
-	return a % b
+	return a - IFloorDiv(a, b)*b
 }
 
 func FMod(a, b float64) float64 {
+	if a > 0 && math.IsInf(b, 1) || a < 0 && math.IsInf(b, -1) {
+		return a
+	}
+	if a > 0 && math.IsInf(b, -1) || a < 0 && math.IsInf(b, 1) {
+		return b
+	}
 	return a - math.Floor(a/b)*b
 }
 

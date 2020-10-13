@@ -6,7 +6,7 @@ import _ "github.com/tdkr/go-luavm/src/binchunk"
 import "github.com/tdkr/go-luavm/src/state"
 
 func main() {
-	ls := state.New()
+	ls := state.New(20, nil)
 
 	ls.PushBoolean(true)
 	printStack(ls)

@@ -5,6 +5,10 @@ import (
 )
 
 func (self *luaState) Compare(idx1, idx2 int, op CompareOp) bool {
+	if !self.stack.isValid(idx1) || !self.stack.isValid(idx2) {
+		return false
+	}
+
 	a := self.stack.get(idx1)
 	b := self.stack.get(idx2)
 	switch op {

@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	. "github.com/tdkr/go-luavm/src/api"
 	"github.com/tdkr/go-luavm/src/number"
 	"math"
@@ -54,7 +55,7 @@ var operators = []operator{
 /*
 http://www.lua.org/manual/5.3/manual.html#lua_arith
 */
-func (self *luaState) Arith(op ArightOp) {
+func (self *luaState) Arith(op ArithOp) {
 	var a, b luaValue // operands
 	b = self.stack.pop()
 	if op != LUA_OPUNM && op != LUA_OPBNOT {
@@ -66,7 +67,7 @@ func (self *luaState) Arith(op ArightOp) {
 	if result := _arith(a, b, operator); result != nil {
 		self.stack.push(result)
 	} else {
-		panic("arithmetic error")
+		panic(fmt.Sprintf("arithmetic error, a:%v, b:%v", a, b))
 	}
 }
 
@@ -78,9 +79,9 @@ func _arith(a, b luaValue, op operator) luaValue {
 			}
 		}
 	} else {
-		if op.integerFunc != nil {
-			if x, ok := convertToInteger(a); ok {
-				if y, ok := convertToInteger(b); ok {
+		if op.integerFunc != nil { // add,sub,mul,mod,idiv,unm
+			if x, ok := a.(int64); ok {
+				if y, ok := b.(int64); ok {
 					return op.integerFunc(x, y)
 				}
 			}
