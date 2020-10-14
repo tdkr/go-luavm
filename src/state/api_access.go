@@ -66,6 +66,14 @@ func (self *luaState) IsString(idx int) bool {
 	return self.Type(idx) == LUA_TNUMBER || self.Type(idx) == LUA_TSTRING
 }
 
+func (self *luaState) IsGoFunction(idx int) bool {
+	val := self.stack.get(idx)
+	if c, ok := val.(*closure); ok {
+		return c.goFunc != nil
+	}
+	return false
+}
+
 func (self *luaState) ToBoolean(idx int) bool {
 	val := self.stack.get(idx)
 	return convertToBoolean(val)
@@ -108,4 +116,12 @@ func (self *luaState) ToStringX(idx int) (string, bool) {
 	default:
 		return "", false
 	}
+}
+
+func (self *luaState) ToGoFunction(idx int) GoFunction {
+	val := self.stack.get(idx)
+	if c, ok := val.(*closure); ok {
+		return c.goFunc
+	}
+	return nil
 }

@@ -4,6 +4,12 @@ type LuaType int
 type ArithOp int
 type CompareOp int
 
+type GoFunction func(state LuaState) int
+
+func LuaUpvalueIndex(i int) int {
+	return LUA_REGISTRYINDEX - i
+}
+
 type LuaState interface {
 	/* basic stack operation */
 	GetTop() int
@@ -52,12 +58,27 @@ type LuaState interface {
 	/* get functions */
 	NewTable()
 	CreateTable(nArr, nRec int)
-	GetTable(idx int)
+	GetTable(idx int) LuaType
 	GetField(idx int, k string) LuaType
 	GetI(idx int, i int64) LuaType
 
 	/* set functions */
 	SetTable(idx int)
 	SetField(idx int, k string)
-	setI(idx int, n int64)
+	SetI(idx int, n int64)
+
+	/* closure functions */
+	Load(chunk []byte, chunkName, mode string) int
+	Call(nArgs, nResults int)
+
+	/* go functions */
+	PushGoFunction(f GoFunction)
+	IsGoFunction(idx int) bool
+	ToGoFunction(idx int) GoFunction
+
+	/* global table functions*/
+	PushGlobalTable()
+	GetGlobal(name string) LuaType
+	SetGlobal(name string)
+	Register(name string, f GoFunction)
 }

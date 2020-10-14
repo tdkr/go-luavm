@@ -1,60 +1,22 @@
-package main
+package util
 
 import (
 	"fmt"
 	"github.com/tdkr/go-luavm/src/api"
 	"github.com/tdkr/go-luavm/src/binchunk"
-	"github.com/tdkr/go-luavm/src/state"
 	. "github.com/tdkr/go-luavm/src/vm"
-	"io/ioutil"
-	"os"
-	"path"
 )
 
-func main() {
-	wd, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-	data, err := ioutil.ReadFile(path.Join(wd, "src/examples/instruction/luac.out"))
-	if err != nil {
-		panic(err)
-	}
-
-	proto := binchunk.Undump(data)
-	fmt.Println("********* list proto **********")
-	list(proto)
-	fmt.Println("********* exec proto **********")
-	luaMain(proto)
-}
-
-func luaMain(proto *binchunk.Prototype) {
-	nRegs := int(proto.MaxStackSize)
-	lState := state.New()
-	lState.SetTop(nRegs)
-	for {
-		pc := lState.PC()
-		inst := Instruction(lState.Fetch())
-		if inst.Opcode() != OP_RETURN {
-			inst.Execute(lState)
-			fmt.Printf("[%02d] %s ", pc+1, inst.OpName())
-			printStack(lState)
-		} else {
-			break
-		}
-	}
-}
-
-func list(f *binchunk.Prototype) {
-	printHeader(f)
-	printCode(f)
-	printDetail(f)
+func PrintProto(f *binchunk.Prototype) {
+	PrintHeader(f)
+	PrintCode(f)
+	PrintDetail(f)
 	for _, p := range f.Protos {
-		list(p)
+		PrintProto(p)
 	}
 }
 
-func printHeader(f *binchunk.Prototype) {
+func PrintHeader(f *binchunk.Prototype) {
 	funcType := "main"
 	if f.LineDefined > 0 {
 		funcType = "function"
@@ -75,7 +37,7 @@ func printHeader(f *binchunk.Prototype) {
 		len(f.LocVars), len(f.Constants), len(f.Protos))
 }
 
-func printCode(f *binchunk.Prototype) {
+func PrintCode(f *binchunk.Prototype) {
 	for pc, c := range f.Code {
 		line := "-"
 		if len(f.LineInfo) > 0 {
@@ -84,12 +46,12 @@ func printCode(f *binchunk.Prototype) {
 
 		i := Instruction(c)
 		fmt.Printf("\t%d\t[%s]\t%s \t", pc+1, line, i.OpName())
-		printOperands(i)
+		PrintOperands(i)
 		fmt.Printf("\n")
 	}
 }
 
-func printOperands(i Instruction) {
+func PrintOperands(i Instruction) {
 	switch i.OpMode() {
 	case IABC:
 		a, b, c := i.ABC()
@@ -127,7 +89,7 @@ func printOperands(i Instruction) {
 	}
 }
 
-func printDetail(f *binchunk.Prototype) {
+func PrintDetail(f *binchunk.Prototype) {
 	fmt.Printf("constants (%d):\n", len(f.Constants))
 	for i, k := range f.Constants {
 		fmt.Printf("\t%d\t%s\n", i+1, constantToString(k))
@@ -170,7 +132,7 @@ func upvalName(f *binchunk.Prototype, idx int) string {
 	return "-"
 }
 
-func printStack(ls api.LuaState) {
+func PrintStack(ls api.LuaState) {
 	top := ls.GetTop()
 	for i := 1; i <= top; i++ {
 		t := ls.Type(i)
