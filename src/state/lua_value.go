@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	"github.com/tdkr/go-luavm/src/api"
 	"github.com/tdkr/go-luavm/src/number"
 )
@@ -71,4 +72,46 @@ func _stringToInteger(s string) (int64, bool) {
 		return number.FloatToInteger(f)
 	}
 	return 0, false
+}
+
+func setMetaTable(val luaValue, mt *luaTable, ls *luaState) {
+	if t, ok := val.(*luaTable); ok {
+		t.metatable = mt
+		return
+	}
+	key := fmt.Sprintf("_MT%d", typeOf(val))
+	ls.registry.put(key, mt)
+}
+
+func getMetaTable(val luaValue, ls *luaState) *luaTable {
+	if t, ok := val.(*luaTable); ok {
+		return t.metatable
+	}
+	key := fmt.Sprintf("_MT%d", typeOf(val))
+	if mt := ls.registry.get(key); mt != nil {
+		return mt.(*luaTable)
+	}
+	return nil
+}
+
+func getMetaField(val luaValue, field string, ls *luaState) luaValue {
+	if mt := getMetaTable(val, ls); mt != nil {
+		return mt.get(field)
+	}
+	return nil
+}
+
+func callMetamethod(a, b luaValue, mmName string, ls *luaState) (luaValue, bool) {
+	var mm luaValue
+	if mm = getMetaField(a, mmName, ls); mm == nil {
+		if mm = getMetaField(b, mmName, ls); mm == nil {
+			return nil, false
+		}
+	}
+	ls.stack.check(4)
+	ls.stack.push(mm)
+	ls.stack.push(a)
+	ls.stack.push(b)
+	ls.Call(2, 1)
+	return ls.stack.pop(), true
 }

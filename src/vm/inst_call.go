@@ -33,7 +33,7 @@ func call(i Instruction, vm LuaVM) {
 }
 
 /*
-如果操作数B大于0，需要传递的参数是B -1个，循环调用PushValue()方法把函数和参数值推入栈顶即可。
+如果操作数B大于0，需要传递的参数是B-1个，循环调用PushValue()方法把函数和参数值推入栈顶即可。
 如果操作数B等于0，表示需要接受子函数的所有返回值作为参数
 */
 func _pushFuncAndArgs(a, b int, vm LuaVM) (nArgs int) {

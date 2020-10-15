@@ -27,7 +27,7 @@ func main() {
 
 func luaMain(proto *binchunk.Prototype) {
 	nRegs := int(proto.MaxStackSize)
-	ls := state.New(nRegs+8)
+	ls := state.New().(LuaVM)
 	ls.SetTop(nRegs)
 	for {
 		pc := ls.PC()

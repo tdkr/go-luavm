@@ -42,10 +42,10 @@ func (self *luaStack) pushN(vals []luaValue, n int) {
 		n = nVals
 	}
 	for i := 0; i < n; i++ {
-		if i >= nVals {
-			self.push(nil)
-		} else {
+		if i < nVals {
 			self.push(vals[i])
+		} else {
+			self.push(nil)
 		}
 	}
 }

@@ -6,8 +6,12 @@ import (
 )
 
 type luaTable struct {
-	arr  []luaValue
-	_map map[luaValue]luaValue
+	arr       []luaValue
+	_map      map[luaValue]luaValue
+	metatable *luaTable
+
+	keys    map[luaValue]luaValue
+	changed bool
 }
 
 func newLuaTable(nArr, nRec int) *luaTable {
@@ -101,4 +105,33 @@ func (self *luaTable) put(key, val luaValue) {
 
 func (self *luaTable) len() int {
 	return len(self.arr)
+}
+
+func (self *luaTable) hasMetafield(field string) bool {
+	return self.metatable != nil && self.metatable.get(field) != nil
+}
+
+func (self *luaTable) nextKey(key luaValue) luaValue {
+	if self.keys == nil || key == nil {
+		self.initKeys()
+		self.changed = false
+	}
+	return self.keys[key]
+}
+
+func (self *luaTable) initKeys() {
+	self.keys = make(map[luaValue]luaValue)
+	var key luaValue = nil
+	for i, v := range self.arr {
+		if v != nil {
+			self.keys[key] = int64(i + 1)
+			key = int64(i + 1)
+		}
+	}
+	for k, v := range self._map {
+		if v != nil {
+			self.keys[key] = k
+			key = k
+		}
+	}
 }

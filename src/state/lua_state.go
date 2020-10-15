@@ -9,9 +9,9 @@ type luaState struct {
 	registry *luaTable
 }
 
-var _ LuaState = New()
+var _ LuaState = &luaState{}
 
-func New() *luaState {
+func New() LuaState {
 	registry := newLuaTable(0, 0)
 	registry.put(LUA_RIDX_GLOBALS, newLuaTable(0, 0)) //全局huanjing
 	ls := &luaState{registry: registry}

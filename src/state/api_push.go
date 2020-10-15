@@ -33,13 +33,13 @@ func (self *luaState) PushGlobalTable() {
 
 func (self *luaState) GetGlobal(name string) api.LuaType {
 	g := self.registry.get(api.LUA_RIDX_GLOBALS)
-	return self.getTable(g, name)
+	return self.getTable(g, name, false)
 }
 
 func (self *luaState) SetGlobal(name string) {
 	g := self.registry.get(api.LUA_RIDX_GLOBALS)
 	v := self.stack.pop()
-	self.setTable(g, name, v)
+	self.setTable(g, name, v, false)
 }
 
 func (self *luaState) Register(name string, f api.GoFunction) {

@@ -123,6 +123,7 @@ func testSet(i Instruction, vm LuaVM) {
 	a, b, c := i.ABC()
 	a += 1
 	b += 1
+
 	if vm.ToBoolean(b) == (c != 0) {
 		vm.Copy(b, a)
 	} else {
