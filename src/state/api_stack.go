@@ -1,77 +1,94 @@
 package state
 
+import . "github.com/tdkr/go-luavm/src/api"
+
+// [-0, +0, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_gettop
 func (self *luaState) GetTop() int {
 	return self.stack.top
 }
 
+// [-0, +0, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_absindex
 func (self *luaState) AbsIndex(idx int) int {
 	return self.stack.absIndex(idx)
 }
 
+// [-0, +0, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_checkstack
 func (self *luaState) CheckStack(n int) bool {
 	self.stack.check(n)
-	return true
+	return true // never fails
 }
 
+// [-n, +0, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_pop
 func (self *luaState) Pop(n int) {
 	for i := 0; i < n; i++ {
 		self.stack.pop()
 	}
 }
 
+// [-0, +0, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_copy
 func (self *luaState) Copy(fromIdx, toIdx int) {
 	val := self.stack.get(fromIdx)
 	self.stack.set(toIdx, val)
 }
 
-/* PushValue()方法把指定索引处的值推入栈顶。*/
+// [-0, +1, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_pushvalue
 func (self *luaState) PushValue(idx int) {
 	val := self.stack.get(idx)
 	self.stack.push(val)
 }
 
-/* Replace()是PushValue()的反操作：将栈顶值弹出，然后写入指定位置。 */
+// [-1, +0, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_replace
 func (self *luaState) Replace(idx int) {
 	val := self.stack.pop()
 	self.stack.set(idx, val)
 }
 
-/* Insert()方法将栈顶值弹出，然后插入指定位置。 */
+// [-1, +1, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_insert
 func (self *luaState) Insert(idx int) {
 	self.Rotate(idx, 1)
 }
 
+// [-1, +0, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_remove
 func (self *luaState) Remove(idx int) {
 	self.Rotate(idx, -1)
 	self.Pop(1)
 }
 
-/* Rotate()方法将[idx, top]索引区间内的值朝栈顶方向循环移动n个位置。如果n是负数，那么实际效果就是朝栈底方向移动。 */
+// [-0, +0, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_rotate
 func (self *luaState) Rotate(idx, n int) {
-	// 三次反转法
-	t := self.stack.top - 1
-	p := self.stack.absIndex(idx) - 1
-	var m int
+	t := self.stack.top - 1           /* end of stack segment being rotated */
+	p := self.stack.absIndex(idx) - 1 /* start of segment */
+	var m int                         /* end of prefix */
 	if n >= 0 {
 		m = t - n
 	} else {
 		m = p - n - 1
 	}
-	self.stack.reverse(p, m)
-	self.stack.reverse(m+1, t)
-	self.stack.reverse(p, t)
+	self.stack.reverse(p, m)   /* reverse the prefix with length 'n' */
+	self.stack.reverse(m+1, t) /* reverse the suffix */
+	self.stack.reverse(p, t)   /* reverse the entire segment */
 }
 
-/*
-SetTop()方法将栈顶索引设置为指定值。如果指定值小于当前栈顶索引，效果则相当于弹出操作（指定值为0相当于清空栈）
-如果指定值大于当前栈顶索引，则效果相当于推入多个nil值。
-*/
+// [-?, +?, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_settop
 func (self *luaState) SetTop(idx int) {
-	top := self.AbsIndex(idx)
-	if top < 0 {
-		panic("stack underflow")
+	newTop := self.stack.absIndex(idx)
+	if newTop < 0 {
+		panic("stack underflow!")
 	}
-	if n := self.stack.top - top; n > 0 {
+
+	n := self.stack.top - newTop
+	if n > 0 {
 		for i := 0; i < n; i++ {
 			self.stack.pop()
 		}
@@ -80,4 +97,11 @@ func (self *luaState) SetTop(idx int) {
 			self.stack.push(nil)
 		}
 	}
+}
+
+// [-?, +?, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_xmove
+func (self *luaState) XMove(to LuaState, n int) {
+	vals := self.stack.popN(n)
+	to.(*luaState).stack.pushN(vals, n)
 }

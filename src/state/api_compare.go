@@ -1,9 +1,21 @@
 package state
 
-import (
-	. "github.com/tdkr/go-luavm/src/api"
-)
+import . "github.com/tdkr/go-luavm/src/api"
 
+// [-0, +0, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_rawequal
+func (self *luaState) RawEqual(idx1, idx2 int) bool {
+	if !self.stack.isValid(idx1) || !self.stack.isValid(idx2) {
+		return false
+	}
+
+	a := self.stack.get(idx1)
+	b := self.stack.get(idx2)
+	return _eq(a, b, nil)
+}
+
+// [-0, +0, e]
+// http://www.lua.org/manual/5.3/manual.html#lua_compare
 func (self *luaState) Compare(idx1, idx2 int, op CompareOp) bool {
 	if !self.stack.isValid(idx1) || !self.stack.isValid(idx2) {
 		return false
@@ -14,12 +26,12 @@ func (self *luaState) Compare(idx1, idx2 int, op CompareOp) bool {
 	switch op {
 	case LUA_OPEQ:
 		return _eq(a, b, self)
-	case LUA_OPLE:
-		return _le(a, b, self)
 	case LUA_OPLT:
 		return _lt(a, b, self)
+	case LUA_OPLE:
+		return _le(a, b, self)
 	default:
-		panic("compare error")
+		panic("invalid compare op!")
 	}
 }
 
@@ -116,16 +128,9 @@ func _le(a, b luaValue, ls *luaState) bool {
 
 	if result, ok := callMetamethod(a, b, "__le", ls); ok {
 		return convertToBoolean(result)
+	} else if result, ok := callMetamethod(b, a, "__lt", ls); ok {
+		return !convertToBoolean(result)
 	} else {
 		panic("comparison error!")
 	}
-}
-
-func (self *luaState) RawEqual(idx1, idx2 int) bool {
-	if !self.stack.isValid(idx1) || !self.stack.isValid(idx2) {
-		return false
-	}
-
-	v1, v2 := self.stack.get(idx1), self.stack.get(idx2)
-	return _eq(v1, v2, nil)
 }

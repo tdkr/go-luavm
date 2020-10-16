@@ -1,17 +1,15 @@
 package state
 
-import (
-	"github.com/tdkr/go-luavm/src/api"
-	"github.com/tdkr/go-luavm/src/binchunk"
-)
+import . "github.com/tdkr/go-luavm/src/api"
+import "github.com/tdkr/go-luavm/src/binchunk"
 
 type upvalue struct {
 	val *luaValue
 }
 
 type closure struct {
-	proto  *binchunk.Prototype
-	goFunc api.GoFunction
+	proto  *binchunk.Prototype // lua closure
+	goFunc GoFunction          // go closure
 	upvals []*upvalue
 }
 
@@ -23,7 +21,7 @@ func newLuaClosure(proto *binchunk.Prototype) *closure {
 	return c
 }
 
-func newGoClosure(f api.GoFunction, nUpvals int) *closure {
+func newGoClosure(f GoFunction, nUpvals int) *closure {
 	c := &closure{goFunc: f}
 	if nUpvals > 0 {
 		c.upvals = make([]*upvalue, nUpvals)

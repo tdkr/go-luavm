@@ -1,17 +1,22 @@
 package api
 
-type LuaType int
-type ArithOp int
-type CompareOp int
+type LuaType = int
+type ArithOp = int
+type CompareOp = int
 
-type GoFunction func(state LuaState) int
+type GoFunction func(LuaState) int
 
 func LuaUpvalueIndex(i int) int {
 	return LUA_REGISTRYINDEX - i
 }
 
 type LuaState interface {
-	/* basic stack operation */
+	BasicAPI
+	AuxLib
+}
+
+type BasicAPI interface {
+	/* basic stack manipulation */
 	GetTop() int
 	AbsIndex(idx int) int
 	CheckStack(n int) bool
@@ -23,8 +28,8 @@ type LuaState interface {
 	Remove(idx int)
 	Rotate(idx, n int)
 	SetTop(idx int)
-
-	/* access functions (stack -> GO) */
+	XMove(to LuaState, n int)
+	/* access functions (stack -> Go) */
 	TypeName(tp LuaType) string
 	Type(idx int) LuaType
 	IsNone(idx int) bool
@@ -34,6 +39,10 @@ type LuaState interface {
 	IsInteger(idx int) bool
 	IsNumber(idx int) bool
 	IsString(idx int) bool
+	IsTable(idx int) bool
+	IsThread(idx int) bool
+	IsFunction(idx int) bool
+	IsGoFunction(idx int) bool
 	ToBoolean(idx int) bool
 	ToInteger(idx int) int64
 	ToIntegerX(idx int) (int64, bool)
@@ -41,61 +50,59 @@ type LuaState interface {
 	ToNumberX(idx int) (float64, bool)
 	ToString(idx int) string
 	ToStringX(idx int) (string, bool)
-
-	/* push functions (GO -> stack) */
+	ToGoFunction(idx int) GoFunction
+	ToThread(idx int) LuaState
+	ToPointer(idx int) interface{}
+	RawLen(idx int) uint
+	/* push functions (Go -> stack) */
 	PushNil()
 	PushBoolean(b bool)
 	PushInteger(n int64)
 	PushNumber(n float64)
 	PushString(s string)
-
-	/* operate functions */
+	PushFString(fmt string, a ...interface{})
+	PushGoFunction(f GoFunction)
+	PushGoClosure(f GoFunction, n int)
+	PushGlobalTable()
+	PushThread() bool
+	/* Comparison and arithmetic functions */
 	Arith(op ArithOp)
 	Compare(idx1, idx2 int, op CompareOp) bool
-	Len(idx int)
-	Concat(n int)
-
-	/* get functions */
+	RawEqual(idx1, idx2 int) bool
+	/* get functions (Lua -> stack) */
 	NewTable()
 	CreateTable(nArr, nRec int)
 	GetTable(idx int) LuaType
 	GetField(idx int, k string) LuaType
 	GetI(idx int, i int64) LuaType
-
-	/* set functions */
+	RawGet(idx int) LuaType
+	RawGetI(idx int, i int64) LuaType
+	GetMetatable(idx int) bool
+	GetGlobal(name string) LuaType
+	/* set functions (stack -> Lua) */
 	SetTable(idx int)
 	SetField(idx int, k string)
-	SetI(idx int, n int64)
-
-	/* closure functions */
-	Load(chunk []byte, chunkName, mode string) int
-	Call(nArgs, nResults int)
-
-	/* go functions */
-	PushGoFunction(f GoFunction)
-	IsGoFunction(idx int) bool
-	ToGoFunction(idx int) GoFunction
-
-	/* global table functions*/
-	PushGlobalTable()
-	GetGlobal(name string) LuaType
+	SetI(idx int, i int64)
+	RawSet(idx int)
+	RawSetI(idx int, i int64)
+	SetMetatable(idx int)
 	SetGlobal(name string)
 	Register(name string, f GoFunction)
-
-	/* meta functions */
-	GetMetatable(idx int) bool
-	SetMetatable(idx int)
-	RawLen(idx int) uint
-	RawEqual(idx1, idx2 int) bool
-	RawGet(idx int) LuaType
-	RawSet(idx int)
-	RawGetI(idx int, i int64) LuaType
-	RawSetI(idx int, i int64)
-
-	/* iter functions */
+	/* 'load' and 'call' functions (load and run Lua code) */
+	Load(chunk []byte, chunkName, mode string) int
+	Call(nArgs, nResults int)
+	PCall(nArgs, nResults, msgh int) int
+	/* miscellaneous functions */
+	Len(idx int)
+	Concat(n int)
 	Next(idx int) bool
-
-	/* error handling function */
 	Error() int
-	PCall(nArgs, nResult, msgh int) int
+	StringToNumber(s string) bool
+	/* coroutine functions */
+	NewThread() LuaState
+	Resume(from LuaState, nArgs int) int
+	Yield(nResults int) int
+	Status() int
+	IsYieldable() bool
+	GetStack() bool // debug
 }

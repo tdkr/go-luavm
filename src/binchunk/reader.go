@@ -1,35 +1,34 @@
 package binchunk
 
-import (
-	"encoding/binary"
-	"math"
-)
+import "encoding/binary"
+import "math"
 
 type reader struct {
 	data []byte
 }
 
 func (self *reader) readByte() byte {
-	v := self.data[0]
+	b := self.data[0]
 	self.data = self.data[1:]
-	return v
+	return b
 }
-func (self *reader) readBytes(length uint) []byte {
-	bytes := self.data[:length]
-	self.data = self.data[length:]
+
+func (self *reader) readBytes(n uint) []byte {
+	bytes := self.data[:n]
+	self.data = self.data[n:]
 	return bytes
 }
 
 func (self *reader) readUint32() uint32 {
-	v := binary.LittleEndian.Uint32(self.data)
+	i := binary.LittleEndian.Uint32(self.data)
 	self.data = self.data[4:]
-	return v
+	return i
 }
 
 func (self *reader) readUint64() uint64 {
-	v := binary.LittleEndian.Uint64(self.data)
+	i := binary.LittleEndian.Uint64(self.data)
 	self.data = self.data[8:]
-	return v
+	return i
 }
 
 func (self *reader) readLuaInteger() int64 {
@@ -45,46 +44,56 @@ func (self *reader) readString() string {
 	if size == 0 {
 		return ""
 	}
-	if size == 0xff { //长字符串
-		size = uint(self.readUint64())
+	if size == 0xFF {
+		size = uint(self.readUint64()) // size_t
 	}
 	bytes := self.readBytes(size - 1)
-	return string(bytes)
+	return string(bytes) // todo
 }
 
 func (self *reader) checkHeader() {
 	if string(self.readBytes(4)) != LUA_SIGNATURE {
-		panic("lua signature not match")
-	} else if self.readByte() != LUAC_VERSION {
-		panic("luac version not match")
-	} else if self.readByte() != LUAC_FORMAT {
-		panic("luac format not match")
-	} else if string(self.readBytes(6)) != LUAC_DATA {
-		panic("luac data not match")
-	} else if self.readByte() != CINT_SIZE {
-		panic("cint size not match")
-	} else if self.readByte() != CSIZET_SIZE {
-		panic("csizet size not match")
-	} else if self.readByte() != INSTRUCTION_SIZE {
-		panic("instruction size not match")
-	} else if self.readByte() != LUA_INTEGER_SIZE {
-		panic("lua integer size not match")
-	} else if self.readByte() != LUA_NUMBER_SIZE {
-		panic("lua number size not match")
-	} else if self.readLuaInteger() != LUAC_INT {
-		panic("luac int not match")
-	} else if self.readLuaNumber() != LUAC_NUM {
-		panic("luac num not match")
+		panic("not a precompiled chunk!")
+	}
+	if self.readByte() != LUAC_VERSION {
+		panic("version mismatch!")
+	}
+	if self.readByte() != LUAC_FORMAT {
+		panic("format mismatch!")
+	}
+	if string(self.readBytes(6)) != LUAC_DATA {
+		panic("corrupted!")
+	}
+	if self.readByte() != CINT_SIZE {
+		panic("int size mismatch!")
+	}
+	if self.readByte() != CSIZET_SIZE {
+		panic("size_t size mismatch!")
+	}
+	if self.readByte() != INSTRUCTION_SIZE {
+		panic("instruction size mismatch!")
+	}
+	if self.readByte() != LUA_INTEGER_SIZE {
+		panic("lua_Integer size mismatch!")
+	}
+	if self.readByte() != LUA_NUMBER_SIZE {
+		panic("lua_Number size mismatch!")
+	}
+	if self.readLuaInteger() != LUAC_INT {
+		panic("endianness mismatch!")
+	}
+	if self.readLuaNumber() != LUAC_NUM {
+		panic("float format mismatch!")
 	}
 }
 
 func (self *reader) readProto(parentSource string) *Prototype {
-	src := self.readString()
-	if src == "" {
-		src = parentSource
+	source := self.readString()
+	if source == "" {
+		source = parentSource
 	}
 	return &Prototype{
-		Source:          src,
+		Source:          source,
 		LineDefined:     self.readUint32(),
 		LastLineDefined: self.readUint32(),
 		NumParams:       self.readByte(),
@@ -93,14 +102,13 @@ func (self *reader) readProto(parentSource string) *Prototype {
 		Code:            self.readCode(),
 		Constants:       self.readConstants(),
 		Upvalues:        self.readUpvalues(),
-		Protos:          self.readProtos(src),
+		Protos:          self.readProtos(source),
 		LineInfo:        self.readLineInfo(),
 		LocVars:         self.readLocVars(),
 		UpvalueNames:    self.readUpvalueNames(),
 	}
 }
 
-// 读取指令表
 func (self *reader) readCode() []uint32 {
 	code := make([]uint32, self.readUint32())
 	for i := range code {
@@ -118,7 +126,7 @@ func (self *reader) readConstants() []interface{} {
 }
 
 func (self *reader) readConstant() interface{} {
-	switch self.readByte() { // tag
+	switch self.readByte() {
 	case TAG_NIL:
 		return nil
 	case TAG_BOOLEAN:
@@ -130,7 +138,7 @@ func (self *reader) readConstant() interface{} {
 	case TAG_SHORT_STR, TAG_LONG_STR:
 		return self.readString()
 	default:
-		panic("invalid tag")
+		panic("corrupted!") // todo
 	}
 }
 

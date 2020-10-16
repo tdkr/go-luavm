@@ -1,8 +1,12 @@
 package state
 
-/* Len()方法访问指定索引处的值，取其长度，然后推入栈顶。*/
+import "github.com/tdkr/go-luavm/src/number"
+
+// [-0, +1, e]
+// http://www.lua.org/manual/5.3/manual.html#lua_len
 func (self *luaState) Len(idx int) {
 	val := self.stack.get(idx)
+
 	if s, ok := val.(string); ok {
 		self.stack.push(int64(len(s)))
 	} else if result, ok := callMetamethod(val, val, "__len", self); ok {
@@ -10,10 +14,12 @@ func (self *luaState) Len(idx int) {
 	} else if t, ok := val.(*luaTable); ok {
 		self.stack.push(int64(t.len()))
 	} else {
-		panic("length error")
+		panic("length error!")
 	}
 }
 
+// [-n, +1, e]
+// http://www.lua.org/manual/5.3/manual.html#lua_concat
 func (self *luaState) Concat(n int) {
 	if n == 0 {
 		self.stack.push("")
@@ -41,9 +47,8 @@ func (self *luaState) Concat(n int) {
 	// n == 1, do nothing
 }
 
-/*
-next()函数接收两个参数——表和键。返回两个值——下一个键值对。如果传递给next()函数的键是nil，表示迭代开始；如果next()函数返回的键是nil，表示迭代结束。
-*/
+// [-1, +(2|0), e]
+// http://www.lua.org/manual/5.3/manual.html#lua_next
 func (self *luaState) Next(idx int) bool {
 	val := self.stack.get(idx)
 	if t, ok := val.(*luaTable); ok {
@@ -55,10 +60,26 @@ func (self *luaState) Next(idx int) bool {
 		}
 		return false
 	}
-	panic("table expected")
+	panic("table expected!")
 }
 
+// [-1, +0, v]
+// http://www.lua.org/manual/5.3/manual.html#lua_error
 func (self *luaState) Error() int {
 	err := self.stack.pop()
 	panic(err)
+}
+
+// [-0, +1, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_stringtonumber
+func (self *luaState) StringToNumber(s string) bool {
+	if n, ok := number.ParseInteger(s); ok {
+		self.PushInteger(n)
+		return true
+	}
+	if n, ok := number.ParseFloat(s); ok {
+		self.PushNumber(n)
+		return true
+	}
+	return false
 }

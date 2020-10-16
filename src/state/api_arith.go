@@ -1,13 +1,11 @@
 package state
 
-import (
-	. "github.com/tdkr/go-luavm/src/api"
-	"github.com/tdkr/go-luavm/src/number"
-	"math"
-)
+import "math"
+import . "github.com/tdkr/go-luavm/src/api"
+import "github.com/tdkr/go-luavm/src/number"
 
 type operator struct {
-	metamethod  string //元方法
+	metamethod  string
 	integerFunc func(int64, int64) int64
 	floatFunc   func(float64, float64) float64
 }
@@ -52,9 +50,8 @@ var operators = []operator{
 	operator{"__bnot", bnot, nil},
 }
 
-/*
-http://www.lua.org/manual/5.3/manual.html#lua_arith
-*/
+// [-(2|1), +1, e]
+// http://www.lua.org/manual/5.3/manual.html#lua_arith
 func (self *luaState) Arith(op ArithOp) {
 	var a, b luaValue // operands
 	b = self.stack.pop()
@@ -63,27 +60,30 @@ func (self *luaState) Arith(op ArithOp) {
 	} else {
 		a = b
 	}
+
 	operator := operators[op]
 	if result := _arith(a, b, operator); result != nil {
 		self.stack.push(result)
 		return
 	}
+
 	mm := operator.metamethod
 	if result, ok := callMetamethod(a, b, mm, self); ok {
 		self.stack.push(result)
 		return
 	}
-	panic("arithmetic error")
+
+	panic("arithmetic error!")
 }
 
 func _arith(a, b luaValue, op operator) luaValue {
-	if op.floatFunc == nil {
+	if op.floatFunc == nil { // bitwise
 		if x, ok := convertToInteger(a); ok {
 			if y, ok := convertToInteger(b); ok {
 				return op.integerFunc(x, y)
 			}
 		}
-	} else {
+	} else { // arith
 		if op.integerFunc != nil { // add,sub,mul,mod,idiv,unm
 			if x, ok := a.(int64); ok {
 				if y, ok := b.(int64); ok {

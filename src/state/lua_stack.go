@@ -3,14 +3,17 @@ package state
 import . "github.com/tdkr/go-luavm/src/api"
 
 type luaStack struct {
+	/* virtual stack */
+	slots []luaValue
+	top   int
+	/* call info */
 	state   *luaState
-	slots   []luaValue
-	top     int
-	prev    *luaStack
 	closure *closure
 	varargs []luaValue
-	pc      int
 	openuvs map[int]*upvalue
+	pc      int
+	/* linked list */
+	prev *luaStack
 }
 
 func newLuaStack(size int, state *luaState) *luaStack {
@@ -30,10 +33,20 @@ func (self *luaStack) check(n int) {
 
 func (self *luaStack) push(val luaValue) {
 	if self.top == len(self.slots) {
-		panic("lua stack overflow")
+		panic("stack overflow!")
 	}
 	self.slots[self.top] = val
 	self.top++
+}
+
+func (self *luaStack) pop() luaValue {
+	if self.top < 1 {
+		panic("stack underflow!")
+	}
+	self.top--
+	val := self.slots[self.top]
+	self.slots[self.top] = nil
+	return val
 }
 
 func (self *luaStack) pushN(vals []luaValue, n int) {
@@ -41,6 +54,7 @@ func (self *luaStack) pushN(vals []luaValue, n int) {
 	if n < 0 {
 		n = nVals
 	}
+
 	for i := 0; i < n; i++ {
 		if i < nVals {
 			self.push(vals[i])
@@ -50,28 +64,19 @@ func (self *luaStack) pushN(vals []luaValue, n int) {
 	}
 }
 
-func (self *luaStack) pop() luaValue {
-	if self.top < 1 {
-		panic("lua stack underflow")
-	}
-	self.top--
-	val := self.slots[self.top]
-	return val
-}
-
 func (self *luaStack) popN(n int) []luaValue {
-	arr := make([]luaValue, n)
+	vals := make([]luaValue, n)
 	for i := n - 1; i >= 0; i-- {
-		arr[i] = self.pop()
+		vals[i] = self.pop()
 	}
-	return arr
+	return vals
 }
 
 func (self *luaStack) absIndex(idx int) int {
 	if idx >= 0 || idx <= LUA_REGISTRYINDEX {
 		return idx
 	}
-	return self.top + idx + 1
+	return idx + self.top + 1
 }
 
 func (self *luaStack) isValid(idx int) bool {
@@ -83,8 +88,8 @@ func (self *luaStack) isValid(idx int) bool {
 	if idx == LUA_REGISTRYINDEX {
 		return true
 	}
-	idx = self.absIndex(idx)
-	return idx > 0 && idx <= self.top
+	absIdx := self.absIndex(idx)
+	return absIdx > 0 && absIdx <= self.top
 }
 
 func (self *luaStack) get(idx int) luaValue {
@@ -96,9 +101,11 @@ func (self *luaStack) get(idx int) luaValue {
 		}
 		return *(c.upvals[uvIdx].val)
 	}
+
 	if idx == LUA_REGISTRYINDEX {
 		return self.state.registry
 	}
+
 	absIdx := self.absIndex(idx)
 	if absIdx > 0 && absIdx <= self.top {
 		return self.slots[absIdx-1]
@@ -115,10 +122,12 @@ func (self *luaStack) set(idx int, val luaValue) {
 		}
 		return
 	}
+
 	if idx == LUA_REGISTRYINDEX {
 		self.state.registry = val.(*luaTable)
 		return
 	}
+
 	absIdx := self.absIndex(idx)
 	if absIdx > 0 && absIdx <= self.top {
 		self.slots[absIdx-1] = val

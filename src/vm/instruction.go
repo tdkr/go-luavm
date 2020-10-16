@@ -1,14 +1,22 @@
 package vm
 
-import (
-	"github.com/tdkr/go-luavm/src/api"
-)
+import "github.com/tdkr/go-luavm/src/api"
 
 const MAXARG_Bx = 1<<18 - 1       // 262143
 const MAXARG_sBx = MAXARG_Bx >> 1 // 131071
 
 /*
-，每条Lua虚拟机指令占用4个字节，共32个比特（可以用Go语言uint32类型表示），其中低6个比特用于操作码，高26个比特用于操作数。
+ 31       22       13       5    0
+  +-------+^------+-^-----+-^-----
+  |b=9bits |c=9bits |a=8bits|op=6|
+  +-------+^------+-^-----+-^-----
+  |    bx=18bits    |a=8bits|op=6|
+  +-------+^------+-^-----+-^-----
+  |   sbx=18bits    |a=8bits|op=6|
+  +-------+^------+-^-----+-^-----
+  |    ax=26bits            |op=6|
+  +-------+^------+-^-----+-^-----
+ 31      23      15       7      0
 */
 type Instruction uint32
 

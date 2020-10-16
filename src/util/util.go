@@ -1,22 +1,24 @@
 package util
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/tdkr/go-luavm/src/api"
 	"github.com/tdkr/go-luavm/src/binchunk"
 	. "github.com/tdkr/go-luavm/src/vm"
 )
 
-func PrintProto(f *binchunk.Prototype) {
-	PrintHeader(f)
-	PrintCode(f)
-	PrintDetail(f)
+func DumpProto(f *binchunk.Prototype) string {
+	buf := bytes.NewBuffer([]byte{})
+	buf.WriteString(DumpHeader(f))
+	buf.WriteString(DumpCode(f))
+	buf.WriteString(DumpDetail(f))
 	for _, p := range f.Protos {
-		PrintProto(p)
+		buf.WriteString(DumpProto(p))
 	}
 }
 
-func PrintHeader(f *binchunk.Prototype) {
+func DumpHeader(f *binchunk.Prototype) string {
 	funcType := "main"
 	if f.LineDefined > 0 {
 		funcType = "function"
@@ -27,17 +29,22 @@ func PrintHeader(f *binchunk.Prototype) {
 		varargFlag = "+"
 	}
 
-	fmt.Printf("\n%s <%s:%d,%d> (%d instructions)\n",
-		funcType, f.Source, f.LineDefined, f.LastLineDefined, len(f.Code))
+	buf := bytes.NewBuffer([]byte{})
 
-	fmt.Printf("%d%s params, %d slots, %d upvalues, ",
-		f.NumParams, varargFlag, f.MaxStackSize, len(f.Upvalues))
+	buf.WriteString(fmt.Sprintf("%s <%s:%d,%d> (%d instructions)\n",
+		funcType, f.Source, f.LineDefined, f.LastLineDefined, len(f.Code)))
 
-	fmt.Printf("%d locals, %d constants, %d functions\n",
-		len(f.LocVars), len(f.Constants), len(f.Protos))
+	buf.WriteString(fmt.Sprintf("%d%s params, %d slots, %d upvalues, ",
+		f.NumParams, varargFlag, f.MaxStackSize, len(f.Upvalues)))
+
+	buf.WriteString(fmt.Sprintf("%d locals, %d constants, %d functions\n",
+		len(f.LocVars), len(f.Constants), len(f.Protos)))
+
+	return buf.String()
 }
 
-func PrintCode(f *binchunk.Prototype) {
+func DumpCode(f *binchunk.Prototype) string {
+	buf := bytes.NewBuffer([]byte{})
 	for pc, c := range f.Code {
 		line := "-"
 		if len(f.LineInfo) > 0 {
@@ -45,66 +52,69 @@ func PrintCode(f *binchunk.Prototype) {
 		}
 
 		i := Instruction(c)
-		fmt.Printf("\t%d\t[%s]\t%s \t", pc+1, line, i.OpName())
-		PrintOperands(i)
-		fmt.Printf("\n")
+		buf.WriteString(fmt.Sprintf("\t%d\t[%s]\t%s \t", pc+1, line, i.OpName()))
+		DumpOperands(i)
+		buf.WriteString("\n")
 	}
+	return buf.String()
 }
 
-func PrintOperands(i Instruction) {
+func DumpOperands(i Instruction) string {
+	buf := bytes.NewBuffer([]byte{})
 	switch i.OpMode() {
 	case IABC:
 		a, b, c := i.ABC()
 
-		fmt.Printf("%d", a)
+		buf.WriteString(fmt.Sprintf("%d", a))
 		if i.BMode() != OpArgN {
 			if b > 0xFF {
-				fmt.Printf(" %d", -1-b&0xFF)
+				buf.WriteString(fmt.Sprintf(" %d", -1-b&0xFF))
 			} else {
-				fmt.Printf(" %d", b)
+				buf.WriteString(fmt.Sprintf(" %d", b))
 			}
 		}
 		if i.CMode() != OpArgN {
 			if c > 0xFF {
-				fmt.Printf(" %d", -1-c&0xFF)
+				buf.WriteString(fmt.Sprintf(" %d", -1-c&0xFF))
 			} else {
-				fmt.Printf(" %d", c)
+				buf.WriteString(fmt.Sprintf(" %d", c))
 			}
 		}
 	case IABx:
 		a, bx := i.ABx()
 
-		fmt.Printf("%d", a)
+		buf.WriteString(fmt.Sprintf("%d", a))
 		if i.BMode() == OpArgK {
-			fmt.Printf(" %d", -1-bx)
+			buf.WriteString(fmt.Sprintf(" %d", -1-bx))
 		} else if i.BMode() == OpArgU {
-			fmt.Printf(" %d", bx)
+			buf.WriteString(fmt.Sprintf(" %d", bx))
 		}
 	case IAsBx:
 		a, sbx := i.AsBx()
-		fmt.Printf("%d %d", a, sbx)
+		buf.WriteString(fmt.Sprintf("%d %d", a, sbx))
 	case IAx:
 		ax := i.Ax()
-		fmt.Printf("%d", -1-ax)
+		buf.WriteString(fmt.Sprintf("%d", -1-ax))
 	}
 }
 
-func PrintDetail(f *binchunk.Prototype) {
-	fmt.Printf("constants (%d):\n", len(f.Constants))
+func DumpDetail(f *binchunk.Prototype) string {
+	buf := bytes.NewBuffer([]byte{})
+	buf.WriteString(fmt.Sprintf("constants (%d):\n", len(f.Constants)))
 	for i, k := range f.Constants {
-		fmt.Printf("\t%d\t%s\n", i+1, constantToString(k))
+		buf.WriteString(fmt.Sprintf("\t%d\t%s\n", i+1, constantToString(k)))
 	}
 
-	fmt.Printf("locals (%d):\n", len(f.LocVars))
+	buf.WriteString(fmt.Sprintf("locals (%d):\n", len(f.LocVars)))
 	for i, locVar := range f.LocVars {
-		fmt.Printf("\t%d\t%s\t%d\t%d\n",
-			i, locVar.VarName, locVar.StartPC+1, locVar.EndPC+1)
+		buf.WriteString(fmt.Sprintf("\t%d\t%s\t%d\t%d\n",
+			i, locVar.VarName, locVar.StartPC+1, locVar.EndPC+1))
 	}
 
-	fmt.Printf("upvalues (%d):\n", len(f.Upvalues))
+	buf.WriteString(fmt.Sprintf("upvalues (%d):\n", len(f.Upvalues)))
 	for i, upval := range f.Upvalues {
-		fmt.Printf("\t%d\t%s\t%d\t%d\n",
-			i, upvalName(f, i), upval.Instack, upval.Idx)
+		buf.WriteString(fmt.Sprintf("\t%d\t%s\t%d\t%d\n",
+			i, upvalName(f, i), upval.Instack, upval.Idx))
 	}
 }
 
@@ -132,19 +142,20 @@ func upvalName(f *binchunk.Prototype, idx int) string {
 	return "-"
 }
 
-func PrintStack(ls api.LuaState) {
+func DumpStack(ls api.LuaState) string {
+	buf := bytes.NewBuffer([]byte{})
 	top := ls.GetTop()
 	for i := 1; i <= top; i++ {
 		t := ls.Type(i)
 		switch t {
 		case api.LUA_TBOOLEAN:
-			fmt.Printf("[%t]", ls.ToBoolean(i))
+			buf.WriteString(fmt.Sprintf("[%t]", ls.ToBoolean(i)))
 		case api.LUA_TNUMBER:
-			fmt.Printf("[%g]", ls.ToNumber(i))
+			buf.WriteString(fmt.Sprintf("[%g]", ls.ToNumber(i)))
 		case api.LUA_TSTRING:
-			fmt.Printf("[%q]", ls.ToString(i))
+			buf.WriteString(fmt.Sprintf("[%q]", ls.ToString(i)))
 		default: // other values
-			fmt.Printf("[%s]", ls.TypeName(t))
+			buf.WriteString(fmt.Sprintf("[%s]", ls.TypeName(t)))
 		}
 	}
 	fmt.Println()

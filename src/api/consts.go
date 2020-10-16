@@ -1,10 +1,20 @@
 package api
 
-/*
-在语言层面，Lua一共支持8种数据类型，分别是nil、布尔（boolean）、数字（number）、字符串（string）、表（table）、函数（function）、线程（thread）和用户数据（userdata）。
-*/
+const LUA_MINSTACK = 20
+const LUAI_MAXSTACK = 1000000
+const LUA_REGISTRYINDEX = -LUAI_MAXSTACK - 1000
+const LUA_RIDX_MAINTHREAD int64 = 1
+const LUA_RIDX_GLOBALS int64 = 2
+const LUA_MULTRET = -1
+
 const (
-	LUA_TNONE = iota - 1
+	LUA_MAXINTEGER = 1<<63 - 1
+	LUA_MININTEGER = -1 << 63
+)
+
+/* basic types */
+const (
+	LUA_TNONE = iota - 1 // -1
 	LUA_TNIL
 	LUA_TBOOLEAN
 	LUA_TLIGHTUSERDATA
@@ -41,11 +51,7 @@ const (
 	LUA_OPLE        // <=
 )
 
-const LUA_MINSTACK = 20
-const LUA_MAXSTACK = 1000000
-const LUA_REGISTRYINDEX = -LUA_MAXSTACK - 1000
-const LUA_RIDX_GLOBALS int64 = 2
-
+/* thread status */
 const (
 	LUA_OK = iota
 	LUA_YIELD
